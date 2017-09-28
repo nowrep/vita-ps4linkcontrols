@@ -24,6 +24,7 @@
 
 #include <psp2/kernel/modulemgr.h>
 #include <psp2/kernel/clib.h>
+#include <psp2/io/fcntl.h>
 #include <taihen.h>
 
 static SceUID g_hooks[3];
@@ -56,6 +57,19 @@ static int rpjob_constructor_patched(struct RPJob *a1, int a2, int a3)
     int out = TAI_CONTINUE(int, ref_hook2, a1, a2, a3);
     a1->mode = keymap_number;
     return out;
+}
+
+static void load_config()
+{
+    SceUID fd = sceIoOpen("ux0:ps4linkcontrols.txt", SCE_O_RDONLY, 0);
+    if (fd >= 0) {
+        char value = 0;
+        sceIoRead(fd, &value, sizeof(value));
+        if (value >= '0' && value <= '7') {
+            keymap_number = value - '0';
+        }
+        sceIoClose(fd);
+    }
 }
 
 void _start() __attribute__ ((weak, alias ("module_start")));
@@ -91,6 +105,10 @@ int module_start(SceSize argc, const void *args)
                                        0x457a8, // offset
                                        1,       // thumb
                                        rpjob_constructor_patched);
+
+    load_config();
+
+    LOG("Using keymap %d", keymap_number);
 
     return SCE_KERNEL_START_SUCCESS;
 }
