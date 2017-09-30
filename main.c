@@ -37,14 +37,20 @@ struct RPJob {
     int mode;
 };
 
+struct S1 {
+    char padding[141];
+    char image_loaded;
+};
+
 static tai_hook_ref_t ref_hook0;
-static int load_keymap_image_patched(void *a1, int a2)
+static int load_keymap_image_patched(struct S1 *a1, int a2)
 {
+    a1->image_loaded = 0;
     return TAI_CONTINUE(int, ref_hook0, a1, keymap_number);
 }
 
 static tai_hook_ref_t ref_hook1;
-static int update_rp_parameters_patched(struct RPJob *a1, int a2)
+static int update_rp_parameters_patched(struct RPJob *a1, int *a2)
 {
     int out = TAI_CONTINUE(int, ref_hook1, a1, a2);
     a1->mode = keymap_number;
