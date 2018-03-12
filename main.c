@@ -91,25 +91,42 @@ int module_start(SceSize argc, const void *args)
         return SCE_KERNEL_START_FAILED;
     }
 
+    uint32_t offsets[3];
+
+    switch (info.module_nid) {
+    case 0x4bc536e4: // 3.65
+        offsets[0] = 0x47d2c;
+        offsets[1] = 0x4640c;
+        offsets[2] = 0x45a88;
+        break;
+
+    default:
+        // FIXME: I don't know 3.60 NID so everything else falls back to 3.60 offsets
+        offsets[0] = 0x47a4c;
+        offsets[1] = 0x4612c;
+        offsets[2] = 0x457a8;
+        break;
+    }
+
     g_hooks[0] = taiHookFunctionOffset(&ref_hook0,
                                        info.modid,
-                                       0,       // segidx
-                                       0x47a4c, // offset
-                                       1,       // thumb
+                                       0,          // segidx
+                                       offsets[0], // offset
+                                       1,          // thumb
                                        load_keymap_image_patched);
 
     g_hooks[1] = taiHookFunctionOffset(&ref_hook1,
                                        info.modid,
-                                       0,       // segidx
-                                       0x4612c, // offset
-                                       1,       // thumb
+                                       0,          // segidx
+                                       offsets[1], // offset
+                                       1,          // thumb
                                        update_rp_parameters_patched);
 
     g_hooks[2] = taiHookFunctionOffset(&ref_hook2,
                                        info.modid,
-                                       0,       // segidx
-                                       0x457a8, // offset
-                                       1,       // thumb
+                                       0,          // segidx
+                                       offsets[2], // offset
+                                       1,          // thumb
                                        rpjob_constructor_patched);
 
     load_config();
