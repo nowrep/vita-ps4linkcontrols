@@ -94,6 +94,11 @@ int module_start(SceSize argc, const void *args)
     uint32_t offsets[3];
 
     switch (info.module_nid) {
+    case 0x48A4A1C1: // 3.60
+        offsets[0] = 0x47a4c;
+        offsets[1] = 0x4612c;
+        offsets[2] = 0x457a8;
+
     case 0x4bc536e4: // 3.65
     case 0x75CFBD26: // 3.68
         offsets[0] = 0x47d2c;
@@ -102,11 +107,8 @@ int module_start(SceSize argc, const void *args)
         break;
 
     default:
-        // FIXME: I don't know 3.60 NID so everything else falls back to 3.60 offsets
-        offsets[0] = 0x47a4c;
-        offsets[1] = 0x4612c;
-        offsets[2] = 0x457a8;
-        break;
+        LOG("ScePS4Link %X NID not recognized", info.module_nid);
+        return SCE_KERNEL_START_FAILED;
     }
 
     g_hooks[0] = taiHookFunctionOffset(&ref_hook0,
