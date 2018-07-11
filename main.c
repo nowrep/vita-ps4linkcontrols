@@ -31,6 +31,19 @@ static SceUID g_hooks[3];
 
 // vs0:app/NPXS10013/keymap
 static int keymap_number = 0;
+// RP-ControllerType
+static int controller_type = 1;
+
+// TheOfficialFloW/Adrenaline user/utils.c
+#define THUMB_SHUFFLE(x) ((((x) & 0xFFFF0000) >> 16) | (((x) & 0xFFFF) << 16))
+uint32_t encode_movw(uint8_t rd, uint16_t imm16)
+{
+    uint32_t imm4 = (imm16 >> 12) & 0xF;
+    uint32_t i = (imm16 >> 11) & 0x1;
+    uint32_t imm3 = (imm16 >> 8) & 0x7;
+    uint32_t imm8 = imm16 & 0xFF;
+    return THUMB_SHUFFLE(0xF2400000 | (rd << 8) | (i << 26) | (imm4 << 16) | (imm3 << 12) | imm8);
+}
 
 struct RPJob {
     char padding[436];
@@ -70,9 +83,19 @@ static void load_config()
     SceUID fd = sceIoOpen("ux0:ps4linkcontrols.txt", SCE_O_RDONLY, 0);
     if (fd >= 0) {
         char value = 0;
-        sceIoRead(fd, &value, sizeof(value));
-        if (value >= '0' && value <= '7') {
+        // keymap
+        int ret = sceIoRead(fd, &value, sizeof(value));
+        if (ret == 1 && value >= '0' && value <= '7') {
             keymap_number = value - '0';
+        }
+        // newline
+        ret = sceIoRead(fd, &value, sizeof(value));
+        if (ret == 1) {
+            // controller_type
+            ret = sceIoRead(fd, &value, sizeof(value));
+            if (ret == 1 && value >= '0' && value <= '9') {
+                controller_type = value - '0';
+            }
         }
         sceIoClose(fd);
     }
@@ -91,25 +114,29 @@ int module_start(SceSize argc, const void *args)
         return SCE_KERNEL_START_FAILED;
     }
 
-    uint32_t offsets[3];
+    uint32_t offsets[4];
 
     switch (info.module_nid) {
     case 0x48A4A1C1: // 3.60
         offsets[0] = 0x47a4c;
         offsets[1] = 0x4612c;
         offsets[2] = 0x457a8;
+        offsets[3] = 0x48C10;
 
     case 0x4bc536e4: // 3.65
     case 0x75CFBD26: // 3.68
         offsets[0] = 0x47d2c;
         offsets[1] = 0x4640c;
         offsets[2] = 0x45a88;
+        offsets[3] = 0x48EF0;
         break;
 
     default:
         LOG("ScePS4Link %X NID not recognized", info.module_nid);
         return SCE_KERNEL_START_FAILED;
     }
+
+    load_config();
 
     g_hooks[0] = taiHookFunctionOffset(&ref_hook0,
                                        info.modid,
@@ -132,9 +159,17 @@ int module_start(SceSize argc, const void *args)
                                        1,          // thumb
                                        rpjob_constructor_patched);
 
-    load_config();
+    // Replace LDR.W R11 [R9, 0xD24] = D9 F8 24 BD
+    //      to MOVW R11, controller_type
+    uint32_t mov_r11_opcode = encode_movw(11, controller_type);
+    taiInjectData(info.modid,
+                  0,          // segidx
+                  offsets[3], // offset
+                  &mov_r11_opcode,
+                  sizeof(mov_r11_opcode));
 
     LOG("Using keymap %d", keymap_number);
+    LOG("Using controller type %d", controller_type);
 
     return SCE_KERNEL_START_SUCCESS;
 }
