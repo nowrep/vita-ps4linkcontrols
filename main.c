@@ -28,6 +28,7 @@
 #include <taihen.h>
 
 static SceUID g_hooks[3];
+static SceUID g_injects[1];
 
 // vs0:app/NPXS10013/keymap
 static int keymap_number = 0;
@@ -162,11 +163,11 @@ int module_start(SceSize argc, const void *args)
     // Replace LDR.W R11 [R9, 0xD24] = D9 F8 24 BD
     //      to MOVW R11, controller_type
     uint32_t mov_r11_opcode = encode_movw(11, controller_type);
-    taiInjectData(info.modid,
-                  0,          // segidx
-                  offsets[3], // offset
-                  &mov_r11_opcode,
-                  sizeof(mov_r11_opcode));
+    g_injects[0] = taiInjectData(info.modid,
+                                 0,          // segidx
+                                 offsets[3], // offset
+                                 &mov_r11_opcode,
+                                 sizeof(mov_r11_opcode));
 
     LOG("Using keymap %d", keymap_number);
     LOG("Using controller type %d", controller_type);
@@ -181,6 +182,8 @@ int module_stop(SceSize argc, const void *args)
     if (g_hooks[0] >= 0) taiHookRelease(g_hooks[0], ref_hook0);
     if (g_hooks[1] >= 0) taiHookRelease(g_hooks[1], ref_hook1);
     if (g_hooks[2] >= 0) taiHookRelease(g_hooks[2], ref_hook2);
+
+    if (g_injects[0] >= 0) taiInjectRelease(g_injects[0]);
 
     return SCE_KERNEL_STOP_SUCCESS;
 }
