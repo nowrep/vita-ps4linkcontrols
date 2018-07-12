@@ -123,6 +123,7 @@ int module_start(SceSize argc, const void *args)
         offsets[1] = 0x4612c;
         offsets[2] = 0x457a8;
         offsets[3] = 0x48C10;
+        break;
 
     case 0x4bc536e4: // 3.65
     case 0x75CFBD26: // 3.68
